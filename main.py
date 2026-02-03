@@ -108,6 +108,40 @@ def delete_book():
         input("Error: Please enter a valid number. (Press enter to continue)")
 
 
+def edit_book():
+    print("\n--- Edit Book (By Position) ---")
+
+    if not library_books:
+        input("Library is empty. (Press enter to continue)")
+        return
+
+    for i, book in enumerate(library_books, start=1):
+        print(f"{i}. {book['title'].title()} | {book['author'].title()}")
+
+    try:
+        pos = int(input("\nEnter book number to edit: "))
+
+        if pos < 1 or pos > len(library_books):
+            input("Invalid position. (Press enter to continue)")
+            return
+
+        book = library_books[pos - 1]
+
+        print("\nLeave blank to keep current value")
+        new_title = input(f"New title [{book['title']}]: ").strip()
+        new_author = input(f"New author [{book['author']}]: ").strip()
+
+        if new_title:
+            book['title'] = new_title
+        if new_author:
+            book['author'] = new_author
+
+        input("Success: Book updated. (Press enter to continue)")
+
+    except ValueError:
+        input("Error: Please enter a valid number. (Press enter to continue)")
+
+
 def main():
     while True:
         clear_screen()
@@ -116,7 +150,8 @@ def main():
         print("2. Search Books")
         print("3. Display All")
         print("4. Delete Book")
-        print("5: Exit")
+        print("5. Edit Book")
+        print("6: Exit")
         choice = input("Enter choice: ")
 
         match choice:
@@ -129,6 +164,8 @@ def main():
             case '4':
                 delete_book()
             case '5':
+                edit_book()
+            case '6':
                 print("Exiting...")
                 break
             case _:
