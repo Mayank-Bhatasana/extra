@@ -1,6 +1,13 @@
 import sys
 import os
 import time
+import json
+import getpass
+
+
+USERS_FILE = "users.json"
+BOOKS_FILE = "books.json"
+BORROW_FILE = "borrow.json"
 
 
 def clear_screen():
@@ -78,57 +85,73 @@ library_books = [
     }
 ]
 
-users = [
-    {
-        'username': 'admin',
-        'password': 'admin123',
-        'role': 'admin',
-        'borrowed_books': []
-    },
-    {
-        'username': 'student1',
-        'password': 'pass123',
-        'role': 'student',
-        'borrowed_books': []
-    },
-    {
-        'username': 'student2',
-        'password': 'pass123',
-        'role': 'student',
-        'borrowed_books': []
-    },
-    {
-        'username': 'student3',
-        'password': 'pass123',
-        'role': 'student',
-        'borrowed_books': []
-    }
-]
+users = []
 
 current_user = None
 next_book_id = 9
 
 
+def load_data():
+    global users, library_books
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'r') as f:
+            users = json.load(f)
+    if os.path.exists(BOOKS_FILE):
+        with open(BOOKS_FILE, 'r') as f:
+            library_books = json.load(f)
+    if not os.path.exists(BORROW_FILE):
+        with open(BORROW_FILE, 'w') as f:
+            json.dump([], f, indent=4)
+
+
+def save_users():
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f, indent=4)
+
+
+def save_books():
+    with open(BOOKS_FILE, 'w') as f:
+        json.dump(library_books, f, indent=4)
+
+
+def create_default_admin():
+    global users
+    if not users:
+        users.append({
+            'username': 'admin',
+            'password': 'admin123',
+            'role': 'admin',
+            'borrowed_books': []
+        })
+        save_users()
+
+
 def login():
     global current_user
     print("\n=== Login to Library System ===")
-    print("Default accounts:")
-    print("Admin - username: admin, password: admin123")
-    print("Student - username: student1, password: pass123")
-    print("Student - username: student2, password: pass123")
-    print("Student - username: student3, password: pass123\n")
-    
-    username = input("Enter username: ").strip()
-    password = input("Enter password: ").strip()
-    
-    for user in users:
-        if user['username'] == username and user['password'] == password:
-            current_user = user
-            input(f"\nLogin successful! Welcome {username} ({user['role']}). (Press enter to continue)")
-            return True
-    
-    input("Login failed! Invalid username or password. (Press enter to continue)")
-    return False
+    print("1. Admin Login")
+    print("2. Student Login")
+    print("3. Exit")
+    choice = input("Enter choice: ").strip()
+
+    if choice == '3':
+        sys.exit(0)
+    elif choice in ('1', '2'):
+        role = 'admin' if choice == '1' else 'student'
+        username = input("Enter username: ").strip()
+        password = getpass.getpass("Password: ")
+
+        for user in users:
+            if user['username'] == username and user['password'] == password and user['role'] == role:
+                current_user = user
+                input(f"\nLogin successful! Welcome {username} ({user['role']}). (Press enter to continue)")
+                return True
+
+        input("Invalid credentials. (Press enter to continue)")
+        return False
+    else:
+        input("Invalid choice. (Press enter to continue)")
+        return False
 
 
 # ========== ADMIN FUNCTIONS ==========
@@ -162,6 +185,7 @@ def add_book():
             'borrowed_by': []
         }
         library_books.append(book)
+        save_books()
         input(f"Success: Book added with ID {book_id}. (Press enter to continue)")
     else:
         input("Error: Title and Author cannot be empty. (Press enter to continue)")
@@ -194,6 +218,7 @@ def delete_book():
         
         if confirm == 'y':
             library_books.pop(pos - 1)
+            save_books()
             input("Success: Book deleted. (Press enter to continue)")
         else:
             input("Delete cancelled. (Press enter to continue)")
@@ -244,6 +269,7 @@ def edit_book():
                 input("Error: Invalid stock number. (Press enter to continue)")
                 return
         
+        save_books()
         input("Success: Book updated. (Press enter to continue)")
     
     except ValueError:
@@ -379,7 +405,8 @@ def borrow_book():
         book['available_stock'] -= 1
         book['borrowed_by'].append(current_user['username'])
         current_user['borrowed_books'].append(book['id'])
-        
+        save_books()
+        save_users()
         input(f"Success! You have borrowed '{book['title'].title()}'. (Press enter to continue)")
     
     except ValueError:
@@ -418,7 +445,8 @@ def return_book():
         book['available_stock'] += 1
         book['borrowed_by'].remove(current_user['username'])
         current_user['borrowed_books'].remove(book['id'])
-        
+        save_books()
+        save_users()
         input(f"Success! You have returned '{book['title'].title()}'. (Press enter to continue)")
     
     except ValueError:
@@ -511,19 +539,22 @@ def student_menu():
 
 def main():
     global current_user
-    
+
+    load_data()
+    create_default_admin()
+
     while True:
         clear_screen()
-        
+
         if current_user is None:
             if not login():
                 continue
-        
+
         if current_user['role'] == 'admin':
             admin_menu()
         else:
             student_menu()
-        
+
         current_user = None
 
 
